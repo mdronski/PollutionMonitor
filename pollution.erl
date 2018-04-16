@@ -10,12 +10,11 @@
 -author("mdronski").
 
 %% API
--export([createMonitor/0, addStation/3, getMap/1, getFullInfo/2, addValue/5, removeValue/4, getOneValue/4]).
+-export([createMonitor/0, addStation/3, getMap/1, getFullInfo/2, addValue/5, removeValue/4, getOneValue/4, getStationMean/3, getDailyMean/4]).
 
 -record(station_info, {geo_cord, name}).
 -record(measurements, {type, value, date}).
 -record(monitor, {stations_map = #{}}).
-
 
 createMonitor() -> #monitor{}.
 
@@ -37,7 +36,6 @@ getFullInfo(Info, Monitor) ->
         {_, {X, Y}, _} -> {station_info, {X, Y}, Name}
       end
   end.
-
 
 addValue(Monitor, Station, Date, Type, Value) ->
   case getFullInfo(Station, Monitor) of
@@ -62,19 +60,33 @@ getOneValue(Monitor, Station, Date, Type) ->
       maps:get({Type, Date}, maps:get(FullName, Monitor#monitor.stations_map))
   end.
 
+getStationMean(Monitor, Station, Type) ->
+  case getFullInfo(Station, Monitor) of
+    error -> stationNotExistsError;
+    FullName ->
+      Map = maps:get(FullName, Monitor#monitor.stations_map),
+      FilteredMap = maps:filter(fun ({T, _}, _) -> T == Type end, Map),
+      {Sum, Count} = maps:fold(fun (_, V, {A, B}) -> {A+V, B+1} end, {0, 0}, FilteredMap),
+      case Count of
+        0 -> 0;
+        C -> Sum / C
+      end
+  end.
 
+getDailyMean(Monitor, Station, Date, Type) ->
+  case getFullInfo(Station, Monitor) of
+    error -> stationNotExistsError;
+    FullName ->
+      Map = maps:get(FullName, Monitor#monitor.stations_map),
+      FilteredMap = maps:filter(fun ({T, {D, _}}, _) -> (T == Type andalso D == Date) end, Map),
+      {Sum, Count} = maps:fold(fun (_, V, {A, B}) -> {A+V, B+1} end, {0, 0}, FilteredMap),
+      case Count of
+        0 -> 0;
+        C -> Sum / C
+      end
+  end.
 
 getMap(M) -> M#monitor.stations_map.
-
-%%findStationMeasurements(Monitor, Info) ->
-%%  case Info of
-%%    {X, Y} -> maps:get(#station_info{{X, Y}, }, Monitor#monitor.stations_map);
-%%  end
-
-%%addMeasurement(Monitor, Info, Date, Type, Value) ->
-%%  L = Monitor#monitor
-%%  Monitor#monitor{stations_map = }
-%%
 
 
 
