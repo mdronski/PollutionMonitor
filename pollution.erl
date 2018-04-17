@@ -14,7 +14,7 @@
   getStationMean/3, getDailyMean/4, checkStationExists/3, checkValueExists/4, writeStation/3, writeMeasurement/5,
   exportToCsv/2]).
 
--record(station_info, {geo_cord, name}).
+-record(station_info, {geo_cord, name = ""}).
 %%-record(measurement, {type, value, date}).
 -record(monitor, {stations_map = #{}}).
 
@@ -69,20 +69,26 @@ removeValue(Station, Date, Type, Monitor ) ->
   case getFullName(Station, Monitor) of
     stationNotExistsError -> stationNotExistsError;
     FullName ->
-      NewMap = maps:remove({Type, Date}, maps:get(FullName, Monitor#monitor.stations_map)),
-      Monitor#monitor {stations_map = maps:update(FullName, NewMap, Monitor#monitor.stations_map)}
+      case checkValueExists(FullName, Date, Type, Monitor) of
+      true -> NewMap = maps:remove({Type, Date}, maps:get(FullName, Monitor#monitor.stations_map)),
+        Monitor#monitor {stations_map = maps:update(FullName, NewMap, Monitor#monitor.stations_map)};
+      false -> valueNotExistsError
+      end
   end.
 
 getOneValue(Station, Date, Type, Monitor) ->
   case getFullName(Station, Monitor) of
-    error -> stationNotExistsError;
+    stationNotExistsError -> stationNotExistsError;
     FullName ->
-      maps:get({Type, Date}, maps:get(FullName, Monitor#monitor.stations_map))
+      case checkValueExists(FullName, Date, Type, Monitor) of
+        true -> maps:get({Type, Date}, maps:get(FullName, Monitor#monitor.stations_map));
+        false ->  valueNotExistsError
+      end
   end.
 
 getStationMean(Station, Type, Monitor) ->
   case getFullName(Station, Monitor) of
-    error -> stationNotExistsError;
+    stationNotExistsError -> stationNotExistsError;
     FullName ->
       Map = maps:get(FullName, Monitor#monitor.stations_map),
       FilteredMap = maps:filter(fun ({T, _}, _) -> T == Type end, Map),
@@ -95,7 +101,7 @@ getStationMean(Station, Type, Monitor) ->
 
 getDailyMean(Station, Date, Type, Monitor) ->
   case getFullName(Station, Monitor) of
-    error -> stationNotExistsError;
+    stationNotExistsError -> stationNotExistsError;
     FullName ->
       Map = maps:get(FullName, Monitor#monitor.stations_map),
       FilteredMap = maps:filter(fun ({T, {D, _}}, _) -> (T == Type andalso D == Date) end, Map),
@@ -106,8 +112,6 @@ getDailyMean(Station, Date, Type, Monitor) ->
       end
   end.
 
-%%exportToCsv(FileName, Monitor) ->
-%%  .
 writeMeasurement(FileName, Type, Date1, Date2, Value) ->
   {D11, D12, D13} = Date1,
   {D21, D22, D23} = Date2,
@@ -123,19 +127,16 @@ writeMeasurement(FileName, Type, Date1, Date2, Value) ->
 
 
 writeStation(FileName, FullName, Monitor) ->
-%%  FullName = getFullName(Station, Monitor),
   {_, {X, Y}, Name} = FullName,
-  Print = io:format("~s", [Name]),
-  io:format("~w", [Print]),
   file:write_file(FileName, io_lib:fwrite("~w,", [X]), [write,append]),
   file:write_file(FileName, io_lib:fwrite("~w", [Y]), [write,append]),
   file:write_file(FileName, io_lib:fwrite(",~s", [Name]), [write,append]),
   MeasurementsMap = maps:get(FullName, Monitor#monitor.stations_map),
-  maps:fold(fun ({T, {D1, D2}}, V, Acc) ->  writeMeasurement(FileName, T, D1, D2, V) end, 0, MeasurementsMap),
+  maps:fold(fun ({T, {D1, D2}}, V, _) ->  writeMeasurement(FileName, T, D1, D2, V) end, 0, MeasurementsMap),
   file:write_file(FileName, io_lib:fwrite("\n", []), [write,append]).
 
 exportToCsv(FileName, Monitor) ->
-  maps:fold(fun (FullName, _, Acc) -> writeStation(FileName, FullName, Monitor) end, 0, Monitor#monitor.stations_map).
+  maps:fold(fun (FullName, _, _) -> writeStation(FileName, FullName, Monitor) end, 0, Monitor#monitor.stations_map).
 
 
 %%getMap(M) -> M#monitor.stations_map.
