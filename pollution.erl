@@ -15,7 +15,6 @@
   exportToCsv/2]).
 
 -record(station_info, {geo_cord, name = ""}).
-%%-record(measurement, {type, value, date}).
 -record(monitor, {stations_map = #{}}).
 
 createMonitor() -> #monitor{}.
