@@ -3,7 +3,7 @@
 
 %% API
 -export([start/0, stop/0,
-        addStation/2, addValue/4, removeValue/3, getValue/3, getStationMean/2, getDailyMean/3, exportToCsv/1]).
+        addStation/2, addValue/4, removeValue/3, getValue/3, getStationMean/2, getDailyMean/3, exportToCsv/1, getMonitor/0]).
 -record(monitor, {stations_map = #{}}).
 
 start() ->
@@ -18,7 +18,8 @@ stop() ->
   pollution_server ! {stop, self()},
   receive
     Msg -> io:format("~p~n", [Msg])
-  end.
+  end,
+  ok.
 
 loop(Monitor) ->
   io:format("Actual monitor: ~p~n", [Monitor]),
@@ -56,27 +57,33 @@ removeValue(Station, Date, Type) ->
 getValue(Station, Date, Type) ->
   pollution_server ! {{getValue, Station, Date, Type}, self()},
   receive
-    Msg -> io:format("~p~n", [Msg])
+    Msg -> Msg
   end.
 
 getStationMean(Station, Type) ->
   pollution_server ! {{getStationMean, Station, Type}, self()},
   receive
-    Msg -> io:format("~p~n", [Msg])
+    Msg -> Msg
   end.
 
 getDailyMean(Station, Date, Type) ->
   pollution_server ! {{getDailyMean, Station, Date, Type}, self()},
   receive
-    Msg -> io:format("~p~n", [Msg])
+    Msg -> Msg
   end.
 
 exportToCsv(FileName) ->
   pollution_server ! {{csv, FileName}, self()},
   receive
-    Msg -> io:format("~p~n", [Msg])
+    Msg -> Msg
   end.
 
+getMonitor() ->
+  pollution_server ! {getMonitor, self()},
+  receive
+    #monitor{} = Monitor -> Monitor;
+    _ -> error
+  end.
 
 handleRequest({addStation, Name, Cords}, Monitor) ->
   case pollution:addStation(Name, Cords, Monitor) of
@@ -125,6 +132,9 @@ handleRequest({getDailyMean, Station, Date, Type}, Monitor) ->
 handleRequest({csv, FileName}, Monitor) ->
   pollution:exportToCsv(FileName, Monitor),
   {ok, Monitor};
+
+handleRequest(getMonitor, Monitor) ->
+  {Monitor, Monitor};
 
 handleRequest(_, Monitor) -> {error, Monitor}.
 
