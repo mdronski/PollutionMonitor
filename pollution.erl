@@ -52,7 +52,7 @@ getFullName(Info, Monitor) ->
 checkValueExists(FullName, Date, Type, Monitor) ->
    maps:is_key({Type, Date}, maps:get(FullName, Monitor#monitor.stations_map)).
 
-addValue(Station, Date, Type, Value, Monitor) ->
+addValue(Station, {{_, _, _}, {_, _, _}} = Date, Type, Value, Monitor) ->
   case getFullName(Station, Monitor) of
     stationNotExistsError -> stationNotExistsError;
     FullName ->
@@ -62,9 +62,12 @@ addValue(Station, Date, Type, Value, Monitor) ->
           NewMap = maps:put({Type, Date}, Value, maps:get(FullName, Monitor#monitor.stations_map)),
           Monitor#monitor {stations_map = maps:update(FullName, NewMap, Monitor#monitor.stations_map)}
       end
-  end.
+  end;
 
-removeValue(Station, Date, Type, Monitor ) ->
+addValue(Station, Date, Type, Value, Monitor) ->
+  wrongDateFormat.
+
+removeValue(Station, {_, _, _} = Date, Type, Monitor ) ->
   case getFullName(Station, Monitor) of
     stationNotExistsError -> stationNotExistsError;
     FullName ->
@@ -73,9 +76,12 @@ removeValue(Station, Date, Type, Monitor ) ->
         Monitor#monitor {stations_map = maps:update(FullName, NewMap, Monitor#monitor.stations_map)};
       false -> valueNotExistsError
       end
-  end.
+  end;
 
-getOneValue(Station, Date, Type, Monitor) ->
+removeValue(Station, Date, Type, Monitor ) ->
+  wrongDateFormat.
+
+getOneValue(Station, {_, _, _} = Date, Type, Monitor) ->
   case getFullName(Station, Monitor) of
     stationNotExistsError -> stationNotExistsError;
     FullName ->
@@ -83,7 +89,10 @@ getOneValue(Station, Date, Type, Monitor) ->
         true -> maps:get({Type, Date}, maps:get(FullName, Monitor#monitor.stations_map));
         false ->  valueNotExistsError
       end
-  end.
+  end;
+
+getOneValue(Station,  Date, Type, Monitor) ->
+  wrongDateFormat.
 
 getStationMean(Station, Type, Monitor) ->
   case getFullName(Station, Monitor) of
@@ -98,7 +107,7 @@ getStationMean(Station, Type, Monitor) ->
       end
   end.
 
-getDailyMean(Station, Date, Type, Monitor) ->
+getDailyMean(Station, {_, _, _} = Date, Type, Monitor) ->
   case getFullName(Station, Monitor) of
     stationNotExistsError -> stationNotExistsError;
     FullName ->
@@ -109,7 +118,10 @@ getDailyMean(Station, Date, Type, Monitor) ->
         0 -> 0;
         C -> Sum / C
       end
-  end.
+  end;
+
+getDailyMean(Station, Date, Type, Monitor) ->
+  wrongDateFormat.
 
 writeMeasurement(FileName, Type, Date1, Date2, Value) ->
   {D11, D12, D13} = Date1,
